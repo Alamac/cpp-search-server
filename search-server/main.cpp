@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <set>
 #include <string>
 #include <utility>
@@ -10,6 +11,7 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double RELEVANCE_THRESHOLD = 1e-6;
 
 string ReadLine() {
     string s;
@@ -92,9 +94,9 @@ public:
 
         vector<Document> filtered_documents;
 
-        for (const auto& i : matched_documents) {
-            if (FilterLamdaFunc(i.id, documents_.at(i.id).status, documents_.at(i.id).rating)) {
-                filtered_documents.push_back(i);
+        for (const auto& doc : matched_documents) {
+            if (FilterLamdaFunc(doc.id, documents_.at(doc.id).status, documents_.at(doc.id).rating)) {
+                filtered_documents.push_back(doc);
             }
         }
 
@@ -245,7 +247,7 @@ private:
     static void SortDocuments(vector<Document>& documents) {
         sort(documents.begin(), documents.end(),
              [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < RELEVANCE_THRESHOLD) {
                     return lhs.rating > rhs.rating;
                 } else {
                     return lhs.relevance > rhs.relevance;
@@ -263,10 +265,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
 
