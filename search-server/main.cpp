@@ -384,7 +384,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = {1, 2, 3};
-    
+
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -453,12 +453,32 @@ void TestSortByRelevance() {
 }
 
 void TestCalcDocumentRating() {
-    const vector<int> ratings = {5, 15, 35, 45, 50};
-    SearchServer server;
-    server.AddDocument(20, "a", DocumentStatus::ACTUAL, ratings);
-    vector<Document> docs = server.FindTopDocuments("a");
-    ASSERT_EQUAL(docs.size(), 1);
-    ASSERT_EQUAL(docs[0].rating, 30.0);
+    const vector<int> ratings_positive = {5, 15, 35, 45, 50};
+    const vector<int> ratings_negative = {-5, -15, -35, -45, -50};
+    const vector<int> ratings_mixed = {-5, 15, -35, 45, -50};
+        {
+            SearchServer server;
+            server.AddDocument(20, "a", DocumentStatus::ACTUAL, ratings_positive);
+            vector<Document> docs = server.FindTopDocuments("a");
+            ASSERT_EQUAL(docs.size(), 1);
+            ASSERT_EQUAL(docs[0].rating, 30.0);
+        }
+
+        {
+            SearchServer server;
+            server.AddDocument(20, "a", DocumentStatus::ACTUAL, ratings_negative);
+            vector<Document> docs = server.FindTopDocuments("a");
+            ASSERT_EQUAL(docs.size(), 1);
+            ASSERT_EQUAL(docs[0].rating, -30.0);
+        }
+
+        {
+            SearchServer server;
+            server.AddDocument(20, "a", DocumentStatus::ACTUAL, ratings_mixed);
+            vector<Document> docs = server.FindTopDocuments("a");
+            ASSERT_EQUAL(docs.size(), 1);
+            ASSERT_EQUAL(docs[0].rating, -6.0);
+        }
 }
 
 void TestUserFilterPredicate() {
@@ -519,11 +539,10 @@ void TestCalcRelevance() {
     vector<Document> docs = server.FindTopDocuments("a b c d");
 
     ASSERT_EQUAL(docs.size(), 4);
-    ASSERT_EQUAL(round(docs[0].relevance * 1000), 196);
-    ASSERT_EQUAL(round(docs[1].relevance * 1000), 163);
-    ASSERT_EQUAL(round(docs[2].relevance * 1000), 96);
-    ASSERT_EQUAL(round(docs[2].relevance * 1000), 96);
-    ASSERT_EQUAL(round(docs[3].relevance), 0);
+    ASSERT(abs(docs[0].relevance - 0.196166) <= RELEVANCE_THRESHOLD);
+    ASSERT(abs(docs[1].relevance - 0.163471) <= RELEVANCE_THRESHOLD);
+    ASSERT(abs(docs[2].relevance - 0.095894) <= RELEVANCE_THRESHOLD);
+    ASSERT_EQUAL(docs[3].relevance, 0);
 }
 
 void TestSearchServer() {
