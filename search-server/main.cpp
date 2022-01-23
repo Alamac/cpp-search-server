@@ -11,6 +11,9 @@
 
 using namespace std;
 
+const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double RELEVANCE_THRESHOLD = 1e-6;
+
 struct Document {
     int id;
     double relevance;
@@ -23,6 +26,10 @@ enum class DocumentStatus {
     BANNED,
     REMOVED,
 };
+
+///////////////                              ///////////////
+///////////////         TEST FRAMEWORK       ///////////////
+///////////////                              ///////////////
 
 ostream& operator<<(ostream& os, const DocumentStatus& s){
     static map<DocumentStatus, string> status_to_string;
@@ -134,8 +141,9 @@ void AssertImpl(bool value, const string& expr_str, const string& file, const st
 
 #define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
 
-const int MAX_RESULT_DOCUMENT_COUNT = 5;
-const double RELEVANCE_THRESHOLD = 1e-6;
+///////////////                              ///////////////
+///////////////     END OF TEST FRAMEWORK    ///////////////
+///////////////                              ///////////////
 
 vector<string> SplitIntoWords(const string& text) {
     vector<string> words;
@@ -369,17 +377,14 @@ private:
 
 };
 
-/* Подставьте вашу реализацию класса SearchServer сюда */
 
 // -------- Начало модульных тестов поисковой системы ----------
 
-// Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
 void TestExcludeStopWordsFromAddedDocumentContent() {
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = {1, 2, 3};
-    // Сначала убеждаемся, что поиск слова, не входящего в список стоп-слов,
-    // находит нужный документ
+    
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -389,8 +394,6 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         ASSERT(doc0.id == doc_id);
     }
 
-    // Затем убеждаемся, что поиск этого же слова, входящего в список стоп-слов,
-    // возвращает пустой результат
     {
         SearchServer server;
         server.SetStopWords("in the"s);
