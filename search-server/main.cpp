@@ -15,6 +15,8 @@ const int MAX_RESULT_DOCUMENT_COUNT = 5;
 const double RELEVANCE_THRESHOLD = 1e-6;
 
 struct Document {
+    Document() : id(0), relevance(0.0), rating(0) {};
+    Document(const int& id, const double& relevance, const int& rating) : id(id), relevance(relevance), rating(rating) {};
     int id;
     double relevance;
     int rating;
@@ -165,19 +167,57 @@ vector<string> SplitIntoWords(const string& text) {
     return words;
 }
 
+bool StringHasSpecialSymbols(const string& s) {
+    for (const auto& c : s) {
+            if (int(c) <= 31 && int(c) >= 0) {
+                return true;
+            } 
+        }
+    return false;
+}
+
 class SearchServer {
 public:
-    void SetStopWords(const string& text) {
+
+    SearchServer() {
+    }
+
+    SearchServer(const string& text) {
         for (const string& word : SplitIntoWords(text)) {
-            stop_words_.insert(word);
+        if (StringHasSpecialSymbols(word)) {
+            throw invalid_argument("There is a special symbol in stopword: "s + word);
         }
-    }    
+        stop_words_.insert(word);
+        }
+    }
+
+    template<typename C, typename T = typename C::value_type>
+    SearchServer(const C& container) {
+        for (const string& word : container) {
+            if (StringHasSpecialSymbols(word)) {
+                throw invalid_argument("There is a special symbol in stopword: "s + word);
+            }
+            if (word != ""s) {
+                stop_words_.insert(word);
+            }
+        }
+    }
 
     int GetDocumentCount() const {
         return documents_.size();
     }
     
     void AddDocument(int document_id, const string& document, DocumentStatus status, const vector<int>& ratings) {
+        if (document_id < 0) {
+            throw invalid_argument("Document id("s + to_string(document_id) + ") is less then 0"s);
+        }
+        if (documents_.find(document_id) != documents_.end()) {
+            throw invalid_argument("There is already a document in document list with id: "s + to_string(document_id));
+        }
+        if (StringHasSpecialSymbols(document)) {
+            throw invalid_argument("There is a special symbol in document: "s + document);
+        }
+
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
@@ -246,6 +286,17 @@ public:
         }
         return {matched_words, documents_.at(document_id).status};
     }
+
+    int GetDocumentId(int index) const {
+        if (index >= documents_.size()) {
+            throw out_of_range("Document list size is less then "s + to_string(index));
+        }
+        else {
+            auto it = documents_.begin();
+            advance(it, index);
+            return it->first;
+        }
+    }
     
 private:
     //structs
@@ -301,6 +352,15 @@ private:
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
+             if (word[0] == '-' && word[1] == '-') {
+                throw invalid_argument("There is a word with double minus(--) in the search query");
+            }
+            if (word[0] == '-' && word.size() == 1) {
+                throw invalid_argument("There is a single minus( - ) in the search query");
+            }
+            if (StringHasSpecialSymbols(word)) {
+                throw invalid_argument("There is a special symbol in the search query");
+            }
             const QueryWord query_word = ParseQueryWord(word);
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
@@ -395,8 +455,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
     }
 
     {
-        SearchServer server;
-        server.SetStopWords("in the"s);
+        SearchServer server("in the"s);
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         ASSERT(server.FindTopDocuments("in"s).empty());
     }
@@ -545,6 +604,15 @@ void TestCalcRelevance() {
     ASSERT_EQUAL(docs[3].relevance, 0);
 }
 
+void TestGetDocumentId() {
+    SearchServer server;
+    server.AddDocument(1, "a b c d e", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
+    server.AddDocument(3, "a b c d e f", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
+    server.AddDocument(2, "a b c", DocumentStatus::ACTUAL, {10, 20, 30, 40, 50});
+    server.AddDocument(5, "a a b", DocumentStatus::ACTUAL, {100, 200, 300, 400, 500});
+    ASSERT_EQUAL(server.GetDocumentId(1), 3);
+}
+
 void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
     TestMinusWords();
@@ -554,6 +622,7 @@ void TestSearchServer() {
     TestUserFilterPredicate();
     TestDocumentStatusFilter();
     TestCalcRelevance();
+    TestGetDocumentId();
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------
