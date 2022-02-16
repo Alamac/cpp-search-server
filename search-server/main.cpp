@@ -8,6 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <numeric>
+#include <deque>
 
 using namespace std;
 
@@ -28,6 +29,95 @@ enum class DocumentStatus {
     BANNED,
     REMOVED,
 };
+
+ostream& operator<<(ostream& os, Document doc) {
+    os << "{ document_id = "s << doc.id << ", relevance = "s << doc.relevance << ", rating = "s << doc.rating << " }"s;
+    return os;
+}
+
+template <typename I>
+void PrintRange(I first, I last, ostream& os) {
+    for (auto it = first; it != last; ++it) {
+        os << *it;
+    }
+}
+
+template <typename It>
+class IteratorRange {
+public:
+    IteratorRange(){};
+
+    IteratorRange(It begin, It end) {
+        begin_ = begin;
+        end_ = end;
+    }
+    IteratorRange(It begin, size_t size) {
+        begin_ = begin;
+        end_ = advance(begin, size);
+    }
+
+    It begin() const {
+        return begin_;
+    }
+    It end() const {
+        return end_;
+    }
+
+    auto size() {
+        return distance(begin_, end_);
+    }
+
+private:
+    It begin_;
+    It end_;
+};
+
+template <typename Iterator>
+ostream& operator<<(ostream& os, const IteratorRange<Iterator>& range) {
+    PrintRange(range.begin(), range.end(), os);
+    return os;
+}
+
+template <typename Iterator>
+class Paginator {
+public:
+    Paginator(Iterator start, Iterator end, size_t size) {
+        if (start == end) {
+            throw invalid_argument("Can't use empty container for Paginator class initialization");
+        }
+        if (size <= 0) {
+            throw invalid_argument("Can't paginate with zero or negative size");
+        }
+        while (start < end) {
+            Iterator start_position = start;
+            advance(start, size);
+            if (start < end) {
+                pages_.push_back(IteratorRange<Iterator>(start_position, start));
+            }
+            else {
+                pages_.push_back(IteratorRange<Iterator>(start_position, end));
+            }
+        }
+    }
+    auto begin() const {
+        return pages_.begin();
+    }
+    auto end() const {
+        return pages_.end();
+    }
+    
+    auto size() const {
+        return pages_.size();
+    }
+
+private:
+    vector<IteratorRange<Iterator>> pages_;
+};
+
+template <typename Container>
+auto Paginate(const Container& c, size_t page_size) {
+    return Paginator(begin(c), end(c), page_size);
+}
 
 ///////////////                              ///////////////
 ///////////////         TEST FRAMEWORK       ///////////////
@@ -437,6 +527,74 @@ private:
 
 };
 
+class RequestQueue {
+public:
+    explicit RequestQueue(const SearchServer& search_server){
+        server_ = &search_server;
+        empty_requests_ = 0;
+        time_ = 0;
+    }
+
+    template <typename DocumentPredicate>
+    vector<Document> AddFindRequest(const string& raw_query, DocumentPredicate document_predicate) {
+        vector<Document> search_result = server_->FindTopDocuments(raw_query, document_predicate);
+        ProcessRequest(search_result);
+        return search_result;
+    }
+
+    vector<Document> AddFindRequest(const string& raw_query, DocumentStatus status) {
+        vector<Document> search_result = server_->FindTopDocuments(raw_query, status);
+        ProcessRequest(search_result);
+        return search_result;
+    }
+
+    vector<Document> AddFindRequest(const string& raw_query) {
+        vector<Document> search_result = server_->FindTopDocuments(raw_query);
+        ProcessRequest(search_result);
+        return search_result;
+    }
+
+    int GetNoResultRequests() const {
+        return empty_requests_;
+    }
+private:
+    struct QueryResult {
+        vector<Document> documents;
+        bool is_empty;
+    };
+    deque<QueryResult> requests_;
+    int empty_requests_;
+    uint64_t time_;
+    const static int min_in_day_ = 1440;
+    const SearchServer* server_;
+    // возможно, здесь вам понадобится что-то ещё
+
+
+    void ProcessRequest(const vector<Document>& search_result) {
+        QueryResult result = {search_result, search_result.empty()};
+        ++time_;
+        if (time_ > min_in_day_ && !requests_.empty()) {
+            RemoveRequest();
+        }
+        AddRequest(result);
+    }
+
+    void RemoveRequest() {
+        QueryResult req = requests_.front();
+        if (req.is_empty) {
+            --empty_requests_;
+        }
+        requests_.pop_front();
+    }
+
+    void AddRequest(const QueryResult& request) {
+        if (request.is_empty) {
+            ++empty_requests_;
+        }
+        requests_.push_back(request);
+    }
+
+};
 
 // -------- Начало модульных тестов поисковой системы ----------
 
@@ -610,7 +768,23 @@ void TestGetDocumentId() {
     server.AddDocument(3, "a b c d e f", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
     server.AddDocument(2, "a b c", DocumentStatus::ACTUAL, {10, 20, 30, 40, 50});
     server.AddDocument(5, "a a b", DocumentStatus::ACTUAL, {100, 200, 300, 400, 500});
-    ASSERT_EQUAL(server.GetDocumentId(1), 3);
+    ASSERT_EQUAL(server.GetDocumentId(1), 2);
+}
+
+void TestPaginator() {
+    SearchServer search_server("and with"s);
+
+    search_server.AddDocument(1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    search_server.AddDocument(2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2, 3});
+    search_server.AddDocument(3, "big cat nasty hair"s, DocumentStatus::ACTUAL, {1, 2, 8});
+    search_server.AddDocument(4, "big dog cat Vladislav"s, DocumentStatus::ACTUAL, {1, 3, 2});
+    search_server.AddDocument(5, "big dog hamster Borya"s, DocumentStatus::ACTUAL, {1, 1, 1});
+
+    const auto search_results = search_server.FindTopDocuments("curly dog"s);
+    int page_size = 2;
+    const auto pages = Paginate(search_results, page_size);
+    ASSERT_EQUAL(pages.size(), 2);
+    
 }
 
 void TestSearchServer() {
@@ -623,12 +797,32 @@ void TestSearchServer() {
     TestDocumentStatusFilter();
     TestCalcRelevance();
     TestGetDocumentId();
+    TestPaginator();
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------
 
 int main() {
     TestSearchServer();
-    // Если вы видите эту строку, значит все тесты прошли успешно
-    cout << "Search server testing finished"s << endl;
+    SearchServer search_server("and in at"s);
+    RequestQueue request_queue(search_server);
+
+    search_server.AddDocument(1, "curly cat curly tail"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    search_server.AddDocument(2, "curly dog and fancy collar"s, DocumentStatus::ACTUAL, {1, 2, 3});
+    search_server.AddDocument(3, "big cat fancy collar "s, DocumentStatus::ACTUAL, {1, 2, 8});
+    search_server.AddDocument(4, "big dog sparrow Eugene"s, DocumentStatus::ACTUAL, {1, 3, 2});
+    search_server.AddDocument(5, "big dog sparrow Vasiliy"s, DocumentStatus::ACTUAL, {1, 1, 1});
+
+    // 1439 запросов с нулевым результатом
+    for (int i = 0; i < 1439; ++i) {
+        request_queue.AddFindRequest("empty request"s);
+    }
+    // все еще 1439 запросов с нулевым результатом
+    request_queue.AddFindRequest("curly dog"s);
+    // новые сутки, первый запрос удален, 1438 запросов с нулевым результатом
+    request_queue.AddFindRequest("big collar"s);
+    // первый запрос удален, 1437 запросов с нулевым результатом
+    request_queue.AddFindRequest("sparrow"s);
+    cout << "Total empty requests: "s << request_queue.GetNoResultRequests() << endl;
+    return 0;
 }
