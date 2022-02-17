@@ -3,15 +3,7 @@
 #include "search_server.h"
 #include "module_tests.h"
 
-
-using namespace std;
-
-// TEST FRAMEWORK
-
-//END OF FRAMEWORK
-
-// MODULE TESTS
-//END OF MODULE TESTS
+using namespace std::string_literals;
 
 int main() {
     TestSearchServer();
