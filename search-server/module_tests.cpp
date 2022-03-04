@@ -53,13 +53,13 @@ void TestDocumentMatching() {
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        ASSERT_EQUAL(server.MatchDocument("cat city", doc_id), std::tuple(std::vector<std::string> {"cat", "city"}, DocumentStatus::ACTUAL));
+        ASSERT_EQUAL(server.MatchDocument("cat city", doc_id), std::make_tuple(std::vector<std::string> {"cat", "city"}, DocumentStatus::ACTUAL));
     }
 
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        ASSERT_EQUAL(server.MatchDocument("cat -city", doc_id), std::tuple(std::vector<std::string> {}, DocumentStatus::ACTUAL));
+        ASSERT_EQUAL(server.MatchDocument("cat -city", doc_id), std::make_tuple(std::vector<std::string> {}, DocumentStatus::ACTUAL));
     }
 }
 

@@ -33,3 +33,7 @@
 
 # Vscode tasks
 .vscode
+cmake-build-debug
+
+# Cmake
+CMakeLists.txt

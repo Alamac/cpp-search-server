@@ -9,6 +9,11 @@
 
 using namespace std::string_literals;
 
+#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
+#define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
+#define ASSERT(expr) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, ""s)
+#define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
+
 std::ostream& operator<<(std::ostream& os, const DocumentStatus& s){
     static std::map<DocumentStatus, std::string> status_to_string;
     if (status_to_string.size() == 0) {
@@ -20,12 +25,6 @@ std::ostream& operator<<(std::ostream& os, const DocumentStatus& s){
         #undef INSERT_ELEMENT
     }
     return os << status_to_string[s];
-}
-
-template <typename T, typename V>
-std::ostream& operator<<(std::ostream& os, const std::tuple<T, V> t) {
-    os << "{"s << std::get<0>(t) << ", "s << std::get<1>(t) << "}"s;
-    return os;
 }
 
 template <typename T>
@@ -82,6 +81,12 @@ std::ostream& operator<<(std::ostream& os, const std::map<T, V>& m) {
     return os;
 }
 
+template <typename T, typename V>
+std::ostream& operator<<(std::ostream& os, const std::tuple<T, V> t) {
+    os << "{"s << std::get<0>(t) << ", "s << std::get<1>(t) << "}"s;
+    return os;
+}
+
 template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const std::string& t_str, const std::string& u_str, const std::string& file,
                      const std::string& func, unsigned line, const std::string& hint) {
@@ -98,10 +103,6 @@ void AssertEqualImpl(const T& t, const U& u, const std::string& t_str, const std
     }
 }
 
-#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
-
-#define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
-
 void AssertImpl(bool value, const std::string& expr_str, const std::string& file, const std::string& func, unsigned line,
                 const std::string& hint) {
     if (!value) {
@@ -114,7 +115,3 @@ void AssertImpl(bool value, const std::string& expr_str, const std::string& file
         abort();
     }
 }
-
-#define ASSERT(expr) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, ""s)
-
-#define ASSERT_HINT(expr, hint) AssertImpl(!!(expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))

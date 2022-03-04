@@ -3,14 +3,13 @@
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <iostream>
 
+#include "log_duration.h"
 #include "search_server.h"
 #include "string_processing.h"
 
 using namespace std;
-
-//config
-//end of config
 
 SearchServer::SearchServer() {}
 
@@ -52,7 +51,8 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
 }
 
 //to use with DocumentStatus
-std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {   
+std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
+    LOG_DURATION_STREAM("Operation time"s, std::cout);
     return SearchServer::FindTopDocuments(raw_query, [status](int doc_id, DocumentStatus doc_status, int doc_rating) 
         {
             return doc_status == status;
@@ -65,6 +65,7 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
 }
 
 std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument(const std::string& raw_query, int document_id) const {
+    LOG_DURATION_STREAM("Operation time"s, std::cout);
     const Query query = ParseQuery(raw_query);
     std::vector<std::string> matched_words;
     for (const std::string& word : query.plus_words) {
