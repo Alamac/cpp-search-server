@@ -34,6 +34,8 @@ public:
     }
 
     int GetDocumentCount() const;
+
+    std::map<std::string, std::map<int, double>> GetWordToFreqs() const;
     
     void AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);
 
@@ -66,12 +68,23 @@ public:
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
 
     int GetDocumentId(int index) const;
-    
+
+    auto begin();
+
+    auto end();
+
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+
+    void RemoveDocument(int document_id);
+
+    void RemoveDuplicates(SearchServer& search_server);
+
 private:
     //structs
     struct DocumentData {
         int rating;
         DocumentStatus status;
+        std::map<std::string, double> word_count;
     };
 
     struct Query {

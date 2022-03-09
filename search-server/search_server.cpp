@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+#include <optional>
 
 #include "log_duration.h"
 #include "search_server.h"
@@ -26,6 +27,10 @@ int SearchServer::GetDocumentCount() const {
     return SearchServer::documents_.size();
 }
 
+std::map<std::string, std::map<int, double>> SearchServer::GetWordToFreqs() const {
+    return word_to_document_freqs_;
+}
+
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings) {
     if (document_id < 0) {
         throw std::invalid_argument("Document id("s + std::to_string(document_id) + ") is less then 0"s);
@@ -39,14 +44,17 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
 
     const std::vector<std::string> words = SplitIntoWordsNoStop(document);
     const double inv_word_count = 1.0 / words.size();
+    std::map<std::string, double> word_freqs;
     for (const std::string& word : words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
+        word_freqs[word] += inv_word_count;
     }
     documents_.emplace(
         document_id, 
         DocumentData{
             ComputeAverageRating(ratings), 
-            status
+            status,
+            word_freqs
         });
 }
 
@@ -88,6 +96,7 @@ std::tuple<std::vector<std::string>, DocumentStatus> SearchServer::MatchDocument
     return {matched_words, documents_.at(document_id).status};
 }
 
+/* DEPRECATED
 int SearchServer::GetDocumentId(int index) const {
     if (index >= SearchServer::documents_.size()) {
         throw std::out_of_range("Document list size is less then "s + std::to_string(index));
@@ -98,7 +107,42 @@ int SearchServer::GetDocumentId(int index) const {
         return it->first;
     }
 }
+*/
 
+auto SearchServer::begin() {
+    return documents_.begin();
+}
+
+auto SearchServer::end() {
+    return documents_.end();
+}
+
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    if (documents_.count(document_id) > 0) {
+        return documents_.at(document_id).word_count;
+    }
+    static const std::map<std::string, double> empty_map = {};
+    return empty_map;
+}
+
+void SearchServer::RemoveDocument(int document_id) {
+    if (documents_.count(document_id) == 0) {
+        return;
+    }
+    for (auto [key, value] : documents_.at(document_id).word_count) {
+        if (word_to_document_freqs_[key].size() == 1) {
+            word_to_document_freqs_.erase(key);
+        }
+        else {
+            word_to_document_freqs_[key].erase(document_id);
+        }
+    }
+    documents_.erase(document_id);
+}
+
+void SearchServer::RemoveDuplicates(SearchServer& search_server) {
+
+}
 
 bool SearchServer::IsStopWord(const std::string& word) const {
     return stop_words_.count(word) > 0;

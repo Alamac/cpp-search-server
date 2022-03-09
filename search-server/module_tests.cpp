@@ -168,7 +168,7 @@ void TestCalcRelevance() {
     ASSERT(std::abs(docs[2].relevance - 0.095894) <= SearchServer::RELEVANCE_THRESHOLD);
     ASSERT_EQUAL(docs[3].relevance, 0);
 }
-
+/*DEPRECATED
 void TestGetDocumentId() {
     SearchServer server;
     server.AddDocument(1, "a b c d e", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
@@ -177,7 +177,7 @@ void TestGetDocumentId() {
     server.AddDocument(5, "a a b", DocumentStatus::ACTUAL, {100, 200, 300, 400, 500});
     ASSERT_EQUAL(server.GetDocumentId(1), 2);
 }
-
+*/
 void TestPaginator() {
     SearchServer search_server("and with"s);
 
@@ -193,6 +193,43 @@ void TestPaginator() {
     ASSERT_EQUAL(pages.size(), 2);   
 }
 
+void TestGetWordFrequencies() {
+    SearchServer search_server("and with"s);
+
+    search_server.AddDocument(5, "big dog hamster Borya big wife husband heck go out"s, DocumentStatus::ACTUAL, {1, 1, 1});
+
+    const std::map<std::string, double> test_case = {
+        {"big", 0.2},
+        {"dog", 0.1},
+        {"hamster", 0.1},
+        {"Borya", 0.1},
+        {"big", 0.1},
+        {"wife", 0.1},
+        {"husband", 0.1},
+        {"heck", 0.1},
+        {"go", 0.1},
+        {"out", 0.1}
+    };
+
+    ASSERT_EQUAL(search_server.GetWordFrequencies(5), test_case);
+}
+
+void TestRemoveDocument() {
+    SearchServer search_server("and with"s);
+
+    search_server.AddDocument(1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    search_server.AddDocument(2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2, 3});
+    search_server.AddDocument(3, "big cat nasty hair"s, DocumentStatus::ACTUAL, {1, 2, 8});
+    search_server.AddDocument(4, "big dog cat Vladislav"s, DocumentStatus::ACTUAL, {1, 3, 2});
+
+    auto word_freqs_before = search_server.GetWordToFreqs();
+    search_server.AddDocument(5, "big dog hamster Borya"s, DocumentStatus::ACTUAL, {1, 1, 1});
+    search_server.RemoveDocument(5);
+    ASSERT_EQUAL(word_freqs_before, search_server.GetWordToFreqs());
+    auto word_freqs = search_server.GetWordFrequencies(5);
+    ASSERT(word_freqs.empty());
+}
+
 void TestSearchServer() {
     TestExcludeStopWordsFromAddedDocumentContent();
     TestMinusWords();
@@ -202,6 +239,7 @@ void TestSearchServer() {
     TestUserFilterPredicate();
     TestDocumentStatusFilter();
     TestCalcRelevance();
-    TestGetDocumentId();
     TestPaginator();
+    TestGetWordFrequencies();
+    TestRemoveDocument();
 }
