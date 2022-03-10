@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 struct Document {
     Document();
     Document(int id, double relevance, int rating);
@@ -13,4 +15,10 @@ enum class DocumentStatus {
     IRRELEVANT,
     BANNED,
     REMOVED,
+};
+
+struct DocumentData {
+    int rating;
+    DocumentStatus status;
+    std::map<std::string, double> word_count;
 };

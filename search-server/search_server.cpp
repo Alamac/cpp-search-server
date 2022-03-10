@@ -108,12 +108,11 @@ int SearchServer::GetDocumentId(int index) const {
     }
 }
 */
-
-auto SearchServer::begin() {
+std::map<int, DocumentData>::iterator SearchServer::begin() {
     return documents_.begin();
 }
 
-auto SearchServer::end() {
+std::map<int, DocumentData>::iterator SearchServer::end() {
     return documents_.end();
 }
 

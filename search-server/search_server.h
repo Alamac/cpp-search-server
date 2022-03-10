@@ -69,9 +69,9 @@ public:
 
     int GetDocumentId(int index) const;
 
-    auto begin();
+    std::map<int, DocumentData>::iterator begin();
 
-    auto end();
+    std::map<int, DocumentData>::iterator end();
 
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
@@ -81,11 +81,6 @@ public:
 
 private:
     //structs
-    struct DocumentData {
-        int rating;
-        DocumentStatus status;
-        std::map<std::string, double> word_count;
-    };
 
     struct Query {
         std::set<std::string> plus_words;
