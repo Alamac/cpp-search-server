@@ -1,7 +1,8 @@
 #include "paginator.h"
 #include "request_queue.h"
 #include "search_server.h"
-#include "module_tests.h"
+#include "test_example_functions.h"
+#include "remove_duplicates.h"
 
 using namespace std::string_literals;
 

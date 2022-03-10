@@ -16,8 +16,14 @@ void TestDocumentStatusFilter();
 
 void TestCalcRelevance();
 
-void TestGetDocumentId();
+//void TestGetDocumentId(); DEPRECATED
 
 void TestPaginator();
+
+void TestGetWordFrequencies();
+
+void TestRemoveDocument();
+
+void TestRemoveDuplicate();
 
 void TestSearchServer();

@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.dSYM
 
 # Precompiled Headers
 *.gch
@@ -33,9 +34,3 @@
 
 # Vscode tasks
 .vscode
-cmake-build-debug
-
-# Cmake
-CMakeLists.txt
-
-.idea

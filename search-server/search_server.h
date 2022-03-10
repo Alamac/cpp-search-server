@@ -69,15 +69,13 @@ public:
 
     int GetDocumentId(int index) const;
 
-    std::map<int, DocumentData>::iterator begin();
+    std::set<int>::const_iterator begin() const;
 
-    std::map<int, DocumentData>::iterator end();
+    std::set<int>::const_iterator end() const;
 
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
-
-    void RemoveDuplicates(SearchServer& search_server);
 
 private:
     //structs
@@ -97,6 +95,7 @@ private:
     std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
+    std::set<int> document_ids_;
     
     //methods
     bool IsStopWord(const std::string& word) const;

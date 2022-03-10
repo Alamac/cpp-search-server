@@ -10,7 +10,7 @@
 #include "search_server.h"
 #include "string_processing.h"
 
-using namespace std;
+using namespace std::string_literals;
 
 SearchServer::SearchServer() {}
 
@@ -56,6 +56,7 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
             status,
             word_freqs
         });
+    document_ids_.insert(document_id);
 }
 
 //to use with DocumentStatus
@@ -108,12 +109,13 @@ int SearchServer::GetDocumentId(int index) const {
     }
 }
 */
-std::map<int, DocumentData>::iterator SearchServer::begin() {
-    return documents_.begin();
+
+std::set<int>::const_iterator SearchServer::begin() const {
+    return document_ids_.begin();
 }
 
-std::map<int, DocumentData>::iterator SearchServer::end() {
-    return documents_.end();
+std::set<int>::const_iterator SearchServer::end() const {
+    return document_ids_.end();
 }
 
 const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
@@ -137,10 +139,8 @@ void SearchServer::RemoveDocument(int document_id) {
         }
     }
     documents_.erase(document_id);
-}
-
-void SearchServer::RemoveDuplicates(SearchServer& search_server) {
-
+    auto position = find(document_ids_.begin(), document_ids_.end(), document_id);
+    document_ids_.erase(position);
 }
 
 bool SearchServer::IsStopWord(const std::string& word) const {

@@ -22,3 +22,5 @@ struct DocumentData {
     DocumentStatus status;
     std::map<std::string, double> word_count;
 };
+
+std::ostream& operator<<(std::ostream& os, Document doc);
