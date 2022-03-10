@@ -8,6 +8,5 @@ using namespace std::string_literals;
 
 int main() {
     TestSearchServer();
-    std::cout << "Module tests completed successfully!"s << std::endl;
     return 0;
 }

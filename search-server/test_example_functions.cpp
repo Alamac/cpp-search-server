@@ -8,7 +8,6 @@
 #include "search_server.h"
 #include "paginator.h"
 #include "remove_duplicates.h"
-#include "document.h"
 
 using namespace std::string_literals;
 
@@ -362,6 +361,7 @@ void TestRemoveDuplicate() {
 }
 
 void TestSearchServer() {
+    std::cout << "Module tests started!"s << std::endl;
     TestExcludeStopWordsFromAddedDocumentContent();
     TestMinusWords();
     TestDocumentMatching();
@@ -374,4 +374,5 @@ void TestSearchServer() {
     TestGetWordFrequencies();
     TestRemoveDocument();
     TestRemoveDuplicate();
+    std::cout << "Module tests completed successfully!"s << std::endl;
 }

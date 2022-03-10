@@ -91,6 +91,12 @@ private:
         bool is_stop;
     };
 
+    struct DocumentData {
+    int rating;
+    DocumentStatus status;
+    std::map<std::string, double> word_count;
+    };
+
     //vars
     std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
