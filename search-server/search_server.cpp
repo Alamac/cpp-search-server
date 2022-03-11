@@ -16,7 +16,7 @@ SearchServer::SearchServer() {}
 
 SearchServer::SearchServer(const std::string& text) {
     for (const std::string& word : SplitIntoWords(text)) {
-    if (StringHasSpecialSymbols(word)) {
+    if (SearchServer::StringHasSpecialSymbols(word)) {
         throw std::invalid_argument("There is a special symbol in stopword: "s + word);
     }
     stop_words_.insert(word);
@@ -38,7 +38,7 @@ void SearchServer::AddDocument(int document_id, const std::string& document, Doc
     if (documents_.find(document_id) != documents_.end()) {
         throw std::invalid_argument("There is already a document in document list with id: "s + std::to_string(document_id));
     }
-    if (StringHasSpecialSymbols(document)) {
+    if (SearchServer::StringHasSpecialSymbols(document)) {
         throw std::invalid_argument("There is a special symbol in document: "s + document);
     }
 
@@ -177,7 +177,7 @@ SearchServer::Query SearchServer::ParseQuery(const std::string& text) const {
         if (word[0] == '-' && word.size() == 1) {
             throw std::invalid_argument("There is a single minus( - ) in the search query");
         }
-        if (StringHasSpecialSymbols(word)) {
+        if (SearchServer::StringHasSpecialSymbols(word)) {
             throw std::invalid_argument("There is a special symbol in the search query");
         }
         const QueryWord query_word = ParseQueryWord(word);
@@ -251,4 +251,13 @@ int SearchServer::ComputeAverageRating(const std::vector<int>& ratings) {
     }
     int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
     return rating_sum / static_cast<int>(ratings.size());
+}
+
+bool SearchServer::StringHasSpecialSymbols(const std::string& s) const {
+    for (const auto& c : s) {
+            if (int(c) <= 31 && int(c) >= 0) {
+                return true;
+            } 
+        }
+    return false;
 }

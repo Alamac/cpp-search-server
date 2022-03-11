@@ -19,12 +19,3 @@ std::vector<std::string> SplitIntoWords(const std::string& text) {
 
     return words;
 }
-
-bool StringHasSpecialSymbols(const std::string& s) {
-    for (const auto& c : s) {
-            if (int(c) <= 31 && int(c) >= 0) {
-                return true;
-            } 
-        }
-    return false;
-}

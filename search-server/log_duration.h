@@ -13,11 +13,9 @@ class LogDuration {
 public:
     using Clock = std::chrono::steady_clock;
 
-    LogDuration(const std::string& id) : id_(id), os_(std::cerr) {
-    }
+    LogDuration(const std::string& id) : id_(id), os_(std::cerr) {}
 
-    LogDuration(const std::string& id, std::ostream& os) : id_(id), os_(os) {
-    }
+    LogDuration(const std::string& id, std::ostream& os) : id_(id), os_(os) {}
 
     ~LogDuration() {
         using namespace std::chrono;

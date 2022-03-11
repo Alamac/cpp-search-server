@@ -12,11 +12,7 @@ public:
     explicit RequestQueue(const SearchServer& search_server);
 
     template <typename DocumentPredicate>
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
-        std::vector<Document> search_result = server_->FindTopDocuments(raw_query, document_predicate);
-        ProcessRequest(search_result);
-        return search_result;
-    }
+    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate);
 
     std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus status);
 
@@ -42,3 +38,10 @@ private:
     void AddRequest(const QueryResult& request);
 
 };
+
+template <typename DocumentPredicate>
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
+    std::vector<Document> search_result = server_->FindTopDocuments(raw_query, document_predicate);
+    RequestQueue::ProcessRequest(search_result);
+    return search_result;
+}

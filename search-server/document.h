@@ -1,7 +1,5 @@
 #pragma once
 
-#include <map>
-
 struct Document {
     Document();
     Document(int id, double relevance, int rating);
