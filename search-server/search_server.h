@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <stdexcept>
+#include <execution>
 
 #include "document.h"
 #include "string_processing.h"
@@ -50,6 +51,8 @@ public:
     const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
+    void RemoveDocument(std::execution::sequenced_policy policy, int document_id);
+    void RemoveDocument(std::execution::parallel_policy policy, int document_id);
 private:
     //structs
     struct Query {

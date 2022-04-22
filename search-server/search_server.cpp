@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <optional>
+#include <execution>
 
 #include "log_duration.h"
 #include "search_server.h"
@@ -137,8 +138,37 @@ void SearchServer::RemoveDocument(int document_id) {
         }
     }
     documents_.erase(document_id);
-    auto position = find(document_ids_.begin(), document_ids_.end(), document_id);
-    document_ids_.erase(position);
+    document_ids_.erase(document_id);
+}
+
+void SearchServer::RemoveDocument(std::execution::sequenced_policy policy, int document_id) {
+    RemoveDocument(document_id);
+}
+
+void SearchServer::RemoveDocument(std::execution::parallel_policy policy, int document_id) {
+    if (!documents_.contains(document_id)) {
+        return;
+    }
+    auto words = documents_.at(document_id).word_count;
+    std::vector<const std::string*> tmp_vector(words.size());
+    std::transform(policy, 
+        words.begin(), 
+        words.end(),
+        tmp_vector.begin(),
+        [](const auto& pair){
+            return &(pair.first);
+        });
+    
+    std::for_each(policy, tmp_vector.begin(), tmp_vector.end(), [this, document_id](const auto& key) {
+        if (word_to_document_freqs_[*key].size() == 1) {
+            word_to_document_freqs_.erase(*key);
+        }
+        else {
+            word_to_document_freqs_[*key].erase(document_id);
+        }
+    });
+    documents_.erase(document_id);
+    document_ids_.erase(document_id);
 }
 
 bool SearchServer::IsStopWord(const std::string& word) const {
