@@ -81,7 +81,7 @@ std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query)
 }
 
 std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::string_view raw_query, int document_id) const {
-    const Query query = ParseQuery(raw_query, true);
+    const Query query = ParseQuery(raw_query, false);
     bool has_minus_words = std::any_of(query.minus_words.begin(), query.minus_words.end(), [this, document_id](std::string_view word) {
         return word_to_document_freqs_.at(word).count(document_id);
     });
@@ -105,7 +105,7 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
 
 std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(
     std::execution::parallel_policy policy, std::string_view raw_query, int document_id) const {
-        Query query = ParseQuery(raw_query);
+        Query query = ParseQuery(raw_query, true);
         bool has_minus_words = std::any_of(query.minus_words.begin(), query.minus_words.end(), [this, document_id](std::string_view word) {
             return word_to_document_freqs_.at(word).count(document_id);
         });
