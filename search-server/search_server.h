@@ -16,36 +16,6 @@
 #include "string_processing.h"
 #include "log_duration.h"
 
-using namespace std;
- 
-template <typename ExecutionPolicy, typename ForwardRange, typename Function>
-void ForEach(const ExecutionPolicy& policy, ForwardRange& range, Function function) {
-    
-        static constexpr int PART_COUNT = 4;
-        const auto part_length = size(range) / PART_COUNT;
-        auto part_begin = range.begin();
-        auto part_end = next(part_begin, part_length);
- 
-        vector<future<void>> futures;
-        for (int i = 0;
-             i < PART_COUNT;
-             ++i,
-                 part_begin = part_end,
-                 part_end = (i == PART_COUNT - 1
-                                 ? range.end()
-                                 : next(part_begin, part_length))
-             ) {
-            futures.push_back(async([function, part_begin, part_end] {
-                for_each(part_begin, part_end, function);
-            }));
-        }
-}
- 
-template <typename ForwardRange, typename Function>
-void ForEach(ForwardRange& range, Function function) {
-    ForEach(execution::seq, range, function);
-}
-
 using namespace std::string_literals;
 class SearchServer {
 public:
@@ -208,11 +178,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::execution::paral
     std::vector<Document> filtered_documents;
     filtered_documents.reserve(matched_documents.size());
     
-    /*ForEach(policy, matched_documents, [] (const auto& doc) {
-        if (FilterLambdaFunc(doc.id, documents_.at(doc.id).status, documents_.at(doc.id).rating)) {
-            filtered_documents.push_back(doc);
-         }
-    });*/
     for (const auto& doc : matched_documents) {
         if (FilterLambdaFunc(doc.id, doc.status, doc.rating)) {
             filtered_documents.push_back(doc);

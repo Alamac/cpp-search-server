@@ -281,16 +281,7 @@ void TestCalcRelevance() {
     ASSERT(std::abs(docs[2].relevance - 0.095894) <= SearchServer::RELEVANCE_THRESHOLD);
     ASSERT_EQUAL(docs[3].relevance, 0);
 }
-/*DEPRECATED
-void TestGetDocumentId() {
-    SearchServer server;
-    server.AddDocument(1, "a b c d e", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
-    server.AddDocument(3, "a b c d e f", DocumentStatus::ACTUAL, {1, 2, 3, 4, 5});
-    server.AddDocument(2, "a b c", DocumentStatus::ACTUAL, {10, 20, 30, 40, 50});
-    server.AddDocument(5, "a a b", DocumentStatus::ACTUAL, {100, 200, 300, 400, 500});
-    ASSERT_EQUAL(server.GetDocumentId(1), 2);
-}
-*/
+
 void TestPaginator() {
     SearchServer search_server("and with"sv);
 
