@@ -1,4 +1,4 @@
-/*#include "paginator.h"
+#include "paginator.h"
 #include "request_queue.h"
 #include "search_server.h"
 #include "test_example_functions.h"
@@ -13,9 +13,9 @@ using namespace std;
 int main() {
     TestSearchServer();
     return 0;
-}*/
+}
 
-#include "search_server.h"
+/*#include "search_server.h"
 
 #include <execution>
 #include <iostream>
@@ -100,4 +100,4 @@ int main() {
 
     TEST(seq);
     TEST(par);
-}
+}*/

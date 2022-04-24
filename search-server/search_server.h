@@ -43,11 +43,12 @@ public:
     //to use without second arg at all (using DocumentStatus::ACTUAL)
     std::vector<Document> FindTopDocuments(std::string_view raw_query) const;
     
+    
+    std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(
+        const std::execution::sequenced_policy&, std::string_view raw_query, int document_id) const;
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(std::string_view raw_query, int document_id) const;
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(
-        std::execution::sequenced_policy policy, std::string_view raw_query, int document_id) const;
-    std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(
-        std::execution::parallel_policy policy, std::string_view raw_query, int document_id) const;
+        const std::execution::parallel_policy&, std::string_view raw_query, int document_id) const;
 
     int GetDocumentId(int index) const;
 
@@ -58,8 +59,8 @@ public:
     const std::map<std::string_view, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
-    void RemoveDocument(std::execution::sequenced_policy policy, int document_id);
-    void RemoveDocument(std::execution::parallel_policy policy, int document_id);
+    void RemoveDocument(const std::execution::sequenced_policy& policy, int document_id);
+    void RemoveDocument(const std::execution::parallel_policy& policy, int document_id);
 private:
     //structs
     struct Query {
@@ -99,7 +100,6 @@ private:
 
     std::vector<Document> FindAllDocuments(const Query& query) const;
 
-    bool StringHasSpecialSymbols(const std::string& s) const;
     bool StringHasSpecialSymbols(std::string_view s) const;
 
     //static methods
@@ -112,20 +112,19 @@ private:
 
 template<typename C, typename T>
 SearchServer::SearchServer(const C& container) {
-    for (const std::string& word : container) {
+    TransparentStringSet stop_words = MakeUniqueNonEmptyStrings(container);
+    for (std::string_view word : stop_words) {
         if (SearchServer::StringHasSpecialSymbols(word)) {
-            throw std::invalid_argument("There is a special symbol in stopword: "s + word);
+            throw std::invalid_argument("There is a special symbol in stopword: "s + std::string(word));
         }
-        if (word != ""s) {
-            stop_words_.insert(word);
-        }
+        stop_words_.insert(std::string(word));
     }
 }
 
 //to use with filter lambda
 template<typename Filter>
 std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, Filter FilterLamdaFunc) const {            
-    const Query query = ParseQuery(raw_query);
+    const Query query = ParseQuery(raw_query, false);
     std::vector<Document> matched_documents = FindAllDocuments(query);
     
     SortDocuments(matched_documents);

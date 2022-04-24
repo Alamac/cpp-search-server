@@ -4,7 +4,6 @@
 
 std::vector<std::string_view> SplitIntoWords(std::string_view str) {
     std::vector<std::string_view> result;
-    result.reserve(str.size() / 2);
     str.remove_prefix(std::min(str.size(), str.find_first_not_of(" ")));
     const int64_t pos_end = str.npos;
     
