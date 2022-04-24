@@ -8,12 +8,45 @@
 #include <stdexcept>
 #include <execution>
 #include <string_view>
+#include <future>
+#include <iterator>
+#include <type_traits>
 
 #include "document.h"
 #include "string_processing.h"
+#include "log_duration.h"
+
+using namespace std;
+ 
+template <typename ExecutionPolicy, typename ForwardRange, typename Function>
+void ForEach(const ExecutionPolicy& policy, ForwardRange& range, Function function) {
+    
+        static constexpr int PART_COUNT = 4;
+        const auto part_length = size(range) / PART_COUNT;
+        auto part_begin = range.begin();
+        auto part_end = next(part_begin, part_length);
+ 
+        vector<future<void>> futures;
+        for (int i = 0;
+             i < PART_COUNT;
+             ++i,
+                 part_begin = part_end,
+                 part_end = (i == PART_COUNT - 1
+                                 ? range.end()
+                                 : next(part_begin, part_length))
+             ) {
+            futures.push_back(async([function, part_begin, part_end] {
+                for_each(part_begin, part_end, function);
+            }));
+        }
+}
+ 
+template <typename ForwardRange, typename Function>
+void ForEach(ForwardRange& range, Function function) {
+    ForEach(execution::seq, range, function);
+}
 
 using namespace std::string_literals;
-
 class SearchServer {
 public:
 
@@ -35,13 +68,29 @@ public:
     void AddDocument(int document_id, std::string_view document, DocumentStatus status, const std::vector<int>& ratings);
 
     template<typename Filter>
-    std::vector<Document> FindTopDocuments(std::string_view raw_query, Filter FilterLamdaFunc) const;
+    std::vector<Document> FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query, Filter FilterLambdaFunc) const;
+
+    template<typename Filter>
+    std::vector<Document> FindTopDocuments(std::string_view raw_query, Filter FilterLambdaFunc) const;
+
+    template<typename Filter>
+    std::vector<Document> FindTopDocuments(const std::execution::parallel_policy& policy,std::string_view raw_query, Filter FilterLambdaFunc) const;
 
     //to use with DocumentStatus
-    std::vector<Document> FindTopDocuments(std::string_view raw_query, DocumentStatus status) const;
+    std::vector<Document> FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query, DocumentStatus status) const;
 
     //to use without second arg at all (using DocumentStatus::ACTUAL)
+    std::vector<Document> FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query) const;
+
+    std::vector<Document> FindTopDocuments(std::string_view raw_query, DocumentStatus status) const;
+
     std::vector<Document> FindTopDocuments(std::string_view raw_query) const;
+
+    //to use with DocumentStatus
+    std::vector<Document> FindTopDocuments(const std::execution::parallel_policy& policy, std::string_view raw_query, DocumentStatus status) const;
+
+    //to use without second arg at all (using DocumentStatus::ACTUAL)
+    std::vector<Document> FindTopDocuments(const std::execution::parallel_policy& policy, std::string_view raw_query) const;
     
     
     std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(
@@ -98,12 +147,15 @@ private:
     
     double ComputeWordInverseDocumentFreq(std::string_view word) const;
 
-    std::vector<Document> FindAllDocuments(const Query& query) const;
+    std::vector<Document> FindAllDocuments(const std::execution::sequenced_policy& policy, const Query& query) const;
+    std::vector<Document> FindAllDocuments(const std::execution::parallel_policy& policy, const Query& query) const;
 
     bool StringHasSpecialSymbols(std::string_view s) const;
 
     //static methods
-    static void SortDocuments(std::vector<Document>& documents);
+    static void SortDocuments(const std::execution::sequenced_policy& policy, std::vector<Document>& documents);
+
+    static void SortDocuments(const std::execution::parallel_policy& policy, std::vector<Document>& documents);
 
     static void ApplyMaxResultDocumentCount(std::vector<Document>& docs);
 
@@ -123,20 +175,50 @@ SearchServer::SearchServer(const C& container) {
 
 //to use with filter lambda
 template<typename Filter>
-std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, Filter FilterLamdaFunc) const {            
+std::vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query, Filter FilterLambdaFunc) const {            
     const Query query = ParseQuery(raw_query, false);
-    std::vector<Document> matched_documents = FindAllDocuments(query);
+    std::vector<Document> matched_documents = FindAllDocuments(policy, query);
     
-    SortDocuments(matched_documents);
+    SortDocuments(policy, matched_documents);
 
     std::vector<Document> filtered_documents;
 
     for (const auto& doc : matched_documents) {
-        if (FilterLamdaFunc(doc.id, documents_.at(doc.id).status, documents_.at(doc.id).rating)) {
+        if (FilterLambdaFunc(doc.id, documents_.at(doc.id).status, documents_.at(doc.id).rating)) {
             filtered_documents.push_back(doc);
         }
     }
 
+    ApplyMaxResultDocumentCount(filtered_documents);
+    return filtered_documents;
+}
+
+template<typename Filter>
+std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, Filter FilterLambdaFunc) const {            
+    return FindTopDocuments(std::execution::seq, raw_query, FilterLambdaFunc);
+}
+
+template<typename Filter>
+std::vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy& policy, std::string_view raw_query, Filter FilterLambdaFunc) const {          
+    const Query query = ParseQuery(raw_query, false);
+    std::vector<Document> matched_documents = FindAllDocuments(policy, query);
+
+    SortDocuments(policy, matched_documents);
+
+    std::vector<Document> filtered_documents;
+    filtered_documents.reserve(matched_documents.size());
+    
+    /*ForEach(policy, matched_documents, [] (const auto& doc) {
+        if (FilterLambdaFunc(doc.id, documents_.at(doc.id).status, documents_.at(doc.id).rating)) {
+            filtered_documents.push_back(doc);
+         }
+    });*/
+    for (const auto& doc : matched_documents) {
+        if (FilterLambdaFunc(doc.id, doc.status, doc.rating)) {
+            filtered_documents.push_back(doc);
+        }
+    }
+    
     ApplyMaxResultDocumentCount(filtered_documents);
     return filtered_documents;
 }
