@@ -12,7 +12,6 @@
 #include "log_duration.h"
 #include "search_server.h"
 #include "string_processing.h"
-#include "concurrent_map.h"
 
 using namespace std::string_literals;
 
@@ -70,19 +69,6 @@ void SearchServer::AddDocument(int document_id, std::string_view document, Docum
     document_ids_.insert(document_id);
 }
 
-//to use with DocumentStatus
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query, DocumentStatus status) const {
-    return SearchServer::FindTopDocuments(policy, raw_query, [status](int doc_id, DocumentStatus doc_status, int doc_rating) 
-        {
-            return doc_status == status;
-        }
-    );
-}
-
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy& policy, std::string_view raw_query) const {            
-    return SearchServer::FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
-}
-
 std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query, DocumentStatus status) const {
     return FindTopDocuments(std::execution::seq, raw_query, status);
 }
@@ -91,19 +77,8 @@ std::vector<Document> SearchServer::FindTopDocuments(std::string_view raw_query)
     return SearchServer::FindTopDocuments(std::execution::seq, raw_query);
 }
 
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy& policy, std::string_view raw_query, DocumentStatus status) const {
-    return SearchServer::FindTopDocuments(policy, raw_query, [status](int doc_id, DocumentStatus doc_status, int doc_rating) 
-        {
-            return doc_status == status;
-        }
-    );
-}
-
-std::vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy& policy, std::string_view raw_query) const {            
-    return SearchServer::FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
-}
-
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(
+using MatchDocumentResult = std::tuple<std::vector<std::string_view>, DocumentStatus>;
+MatchDocumentResult SearchServer::MatchDocument(
     const std::execution::sequenced_policy&, std::string_view raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query, false);
         std::vector<std::string_view> matched_words;
@@ -126,11 +101,11 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
         return {matched_words, documents_.at(document_id).status};
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::string_view raw_query, int document_id) const {
+MatchDocumentResult SearchServer::MatchDocument(std::string_view raw_query, int document_id) const {
     return MatchDocument(std::execution::seq, raw_query, document_id);
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(
+MatchDocumentResult SearchServer::MatchDocument(
     const std::execution::parallel_policy&, std::string_view raw_query, int document_id) const {
         Query query = ParseQuery(raw_query, true);
 
@@ -281,88 +256,6 @@ SearchServer::Query SearchServer::ParseQuery(std::string_view text, bool skip_so
 
 double SearchServer::ComputeWordInverseDocumentFreq(std::string_view word) const {
     return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
-}
-
-std::vector<Document> SearchServer::FindAllDocuments(const std::execution::sequenced_policy& policy, const Query& query) const {
-    std::map<int, double> document_to_relevance;
-    for (std::string_view word : query.plus_words) {
-        if (word_to_document_freqs_.count(word) == 0) {
-            continue;
-        }
-        const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-        for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-            document_to_relevance[document_id] += term_freq * inverse_document_freq;
-        }
-    }
-    
-    for (std::string_view word_view : query.minus_words) {
-        if (word_to_document_freqs_.count(word_view) == 0) {
-            continue;
-        }
-        for (const auto [document_id, _] : word_to_document_freqs_.at(word_view)) {
-            document_to_relevance.erase(document_id);
-        }
-    }
-
-    std::vector<Document> matched_documents;
-    for (const auto [document_id, relevance] : document_to_relevance) {
-        matched_documents.push_back({
-            document_id,
-            relevance,
-            documents_.at(document_id).rating,
-            documents_.at(document_id).status
-        });
-    }
-    return matched_documents;
-}
-
-std::vector<Document> SearchServer::FindAllDocuments(const std::execution::parallel_policy& policy, const Query& query) const {
-    
-    ConcurrentMap<int, double> document_to_relevance(100);
-
-    std::for_each(policy, query.plus_words.begin(), query.plus_words.end(), [&](std::string_view word) {
-        if (word_to_document_freqs_.count(word) > 0 && !std::any_of(policy, query.minus_words.begin(), query.minus_words.end(), [&word](std::string_view minus_word) {
-            return minus_word == word;
-        })) {
-            const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-            for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-                document_to_relevance[document_id].ref_to_value += term_freq * inverse_document_freq;
-            }
-        }
-    });
-
-    std::map<int, double> map = document_to_relevance.BuildOrdinaryMap();
-    
-    std::vector<Document> matched_documents(map.size());
-    
-    std::transform(policy, map.begin(), map.end(), matched_documents.begin(), [&](const auto& it) {
-        auto& i = documents_.at(it.first);
-        return Document(it.first, it.second, i.rating, i.status);
-    });
-
-    return matched_documents;
-}
-
-void SearchServer::SortDocuments(const std::execution::sequenced_policy& policy, std::vector<Document>& documents) {
-    sort(policy, documents.begin(), documents.end(),
-            [](const Document& lhs, const Document& rhs) {
-            if (std::abs(lhs.relevance - rhs.relevance) < SearchServer::RELEVANCE_THRESHOLD) {
-                return lhs.rating > rhs.rating;
-            } else {
-                return lhs.relevance > rhs.relevance;
-            }
-            });
-}
-
-void SearchServer::SortDocuments(const std::execution::parallel_policy& policy, std::vector<Document>& documents) {
-    sort(policy, documents.begin(), documents.end(),
-            [](const Document& lhs, const Document& rhs) {
-            if (std::abs(lhs.relevance - rhs.relevance) < SearchServer::RELEVANCE_THRESHOLD) {
-                return lhs.rating > rhs.rating;
-            } else {
-                return lhs.relevance > rhs.relevance;
-            }
-            });
 }
 
 void SearchServer::ApplyMaxResultDocumentCount(std::vector<Document>& docs) {
