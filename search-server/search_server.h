@@ -17,12 +17,13 @@
 #include "log_duration.h"
 #include "concurrent_map.h"
 
+static constexpr double RELEVANCE_THRESHOLD = 1e-6;
+static const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
 using namespace std::string_literals;
 class SearchServer {
 public:
 
-    static constexpr double RELEVANCE_THRESHOLD = 1e-6;
-    static const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
     SearchServer();
 
@@ -140,7 +141,7 @@ template<typename ExecutionPolicy>
 void SearchServer::SortDocuments(const ExecutionPolicy& policy, std::vector<Document>& documents) {
     sort(policy, documents.begin(), documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (std::abs(lhs.relevance - rhs.relevance) < SearchServer::RELEVANCE_THRESHOLD) {
+                if (std::abs(lhs.relevance - rhs.relevance) < RELEVANCE_THRESHOLD) {
                     return lhs.rating > rhs.rating;
                 } else {
                     return lhs.relevance > rhs.relevance;

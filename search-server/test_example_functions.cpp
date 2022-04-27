@@ -276,9 +276,9 @@ void TestCalcRelevance() {
     std::vector<Document> docs = server.FindTopDocuments("a b c d"sv);
 
     ASSERT_EQUAL(docs.size(), 4);
-    ASSERT(std::abs(docs[0].relevance - 0.196166) <= SearchServer::RELEVANCE_THRESHOLD);
-    ASSERT(std::abs(docs[1].relevance - 0.163471) <= SearchServer::RELEVANCE_THRESHOLD);
-    ASSERT(std::abs(docs[2].relevance - 0.095894) <= SearchServer::RELEVANCE_THRESHOLD);
+    ASSERT(std::abs(docs[0].relevance - 0.196166) <= RELEVANCE_THRESHOLD);
+    ASSERT(std::abs(docs[1].relevance - 0.163471) <= RELEVANCE_THRESHOLD);
+    ASSERT(std::abs(docs[2].relevance - 0.095894) <= RELEVANCE_THRESHOLD);
     ASSERT_EQUAL(docs[3].relevance, 0);
 }
 

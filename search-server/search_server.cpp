@@ -259,8 +259,8 @@ double SearchServer::ComputeWordInverseDocumentFreq(std::string_view word) const
 }
 
 void SearchServer::ApplyMaxResultDocumentCount(std::vector<Document>& docs) {
-    if (docs.size() > SearchServer::MAX_RESULT_DOCUMENT_COUNT) {
-        docs.resize(SearchServer::MAX_RESULT_DOCUMENT_COUNT);
+    if (docs.size() > MAX_RESULT_DOCUMENT_COUNT) {
+        docs.resize(MAX_RESULT_DOCUMENT_COUNT);
     }
 }
 
